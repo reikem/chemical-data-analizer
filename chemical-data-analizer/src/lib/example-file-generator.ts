@@ -1,7 +1,8 @@
 /**
  * 
  * 
- * @param filas Cantidad de filas a generar en el CSV
+ * @param filas Cantidad de filas a generar en el CSV, por defecto 10.
+ * @returns Un archivo CSV descargable con datos de ejemplo para análisis de aceite.
 
  */
 
