@@ -171,7 +171,7 @@ async function addChartsSheet(workbook: XLSX.WorkBook): Promise<void> {
 
       const base64 = chartImage.split(",")[1]
 
-      const worksheet = XLSX.utils.aoa_to_sheet([["Gráfico"], [""]]) // Add some space for the image
+      const worksheet = XLSX.utils.aoa_to_sheet([["Gráfico"], [""]]) 
 
       if (!worksheet["!images"]) worksheet["!images"] = []
 
