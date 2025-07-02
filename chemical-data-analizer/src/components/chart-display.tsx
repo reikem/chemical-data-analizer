@@ -145,7 +145,7 @@ export function ChartDisplay({
             <BarChart      data={processedData}  />
           </TabsContent>
           <TabsContent value="area"     className="mt-4">
-            <AreaChart     data={processedData} selectedElements={selectedElements} />
+            <AreaChart     data={processedData}  />
           </TabsContent>
           <TabsContent value="scatter"  className="mt-4">
             <ScatterChart  data={processedData}  />

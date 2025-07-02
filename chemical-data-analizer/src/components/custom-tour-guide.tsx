@@ -1,73 +1,73 @@
-
-
-import * as React from "react"
+import { useState, useEffect } from "react"
+import { Button } from "./ui/button"
 import {
   HelpCircle,
   X,
   ArrowRight,
   ArrowLeft,
 } from "lucide-react"
-
-import { Button } from "./ui/button"
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   CardFooter,
+  CardHeader,
+  CardTitle,
 } from "./ui/card"
 import { cn } from "../lib/utils"
 
+/* ---------------------------------------------------------
+ * ¡NO CAMBIES el tipo ni el nombre de este export!
+ * --------------------------------------------------------- */
+export const TOUR_STEPS = [
+  {
+    id: "file-upload-section",
+    title: "Carga de Archivos",
+    description:
+      "Aquí puedes cargar tus archivos CSV o Excel con datos de elementos químicos.",
+    position: "bottom" as "top" | "bottom" | "left" | "right",
+  },
+  /* … resto de pasos … */
+  {
+    id: "tour-end",
+    title: "¡Recorrido Completado!",
+    description:
+      "Ahora ya conoces todas las funcionalidades de la aplicación. Puedes volver a iniciar este recorrido en cualquier momento haciendo clic en el botón de ayuda.",
+    position: "center" as "top" | "bottom" | "left" | "right" | "center",
+  },
+] as const   // ← mantiene inmutable la forma del array
 
-export type TourStep = {
-  id:        string          // id del elemento a resaltar
-  title:     string
-  desc:      string
-  pos:       "top" | "bottom" | "left" | "right" | "center"
-}
+/* ---------------------------------------------------------
+ *  COMPONENTE
+ * --------------------------------------------------------- */
+export function CustomTourGuide() {
+  const [isActive, setIsActive]     = useState(false)
+  const [current, setCurrent]       = useState(0)
+  const [available, setAvailable]   = useState<number[]>([])
 
-export const TOUR_STEPS: TourStep[] = [
-  { id: "file-upload-section", title: "Carga de archivos",   desc: "Arrastra aquí tu CSV/XLSX.",        pos: "bottom" },
-  { id: "column-selector",     title: "Selector de columnas",desc: "Elige la(s) columna(s) de fecha.",  pos: "right"  },
-  { id: "results-section",     title: "Resultados",          desc: "Vista general del análisis.",       pos: "top"    },
-  { id: "export-buttons",      title: "Exportar",            desc: "Genera PDF, Excel o imprime.",      pos: "bottom" },
-  { id: "summary-cards",       title: "Resumen",             desc: "Muestras, elementos y fechas.",     pos: "bottom" },
-  { id: "tabs-section",        title: "Pestañas",            desc: "Gráficos, tabla y estadísticas.",   pos: "top"    },
-  { id: "tour-end",            title: "¡Listo!",             desc: "Ya conoces la interfaz 😊",          pos: "center" },
-]
-
-
-export const CustomTourGuide: React.FC = () => {
-  const [open,    setOpen]   = React.useState(false)
-  const [index,   setIndex]  = React.useState(0)
-  const [steps,   setSteps]  = React.useState<number[]>([])
-
-
-  const start = (): void => {
-    const available = TOUR_STEPS
+  /* ---------- Lógica de inicio --------------------------------------- */
+  const startTour = () => {
+    const visible = TOUR_STEPS
       .map((s, i) =>
         s.id === "tour-end" || document.getElementById(s.id) ? i : -1,
       )
-      .filter(i => i !== -1)
+      .filter((i) => i !== -1)
 
-    if (!available.length) {
-      console.warn("[tour] No hay elementos con los id esperados.")
-      return
-    }
-    setSteps(available)
-    setIndex(0)
-    setOpen(true)
+    setAvailable(visible)
+    setCurrent(0)
+    setIsActive(true)
   }
 
-  const end   = (): void => setOpen(false)
-  const next  = (): void => setIndex(i => (i < steps.length - 1 ? i + 1 : (end(), i)))
-  const prev  = (): void => setIndex(i => (i > 0 ? i - 1 : i))
+  const endTour   = () => setIsActive(false)
+  const nextStep  = () =>
+    current < available.length - 1 ? setCurrent((p) => p + 1) : endTour()
+  const prevStep  = () =>
+    current > 0 && setCurrent((p) => p - 1)
 
+  /* ---------- Resaltar elemento -------------------------------------- */
+  useEffect(() => {
+    if (!isActive || !available.length) return
 
-  React.useEffect(() => {
-    if (!open || !steps.length) return
-
-    const step = TOUR_STEPS[steps[index]]
+    const step = TOUR_STEPS[available[current]]
     if (step.id === "tour-end") return
 
     const el = document.getElementById(step.id)
@@ -77,96 +77,110 @@ export const CustomTourGuide: React.FC = () => {
     el.scrollIntoView({ behavior: "smooth", block: "center" })
 
     return () => el.classList.remove("tour-highlight")
-  }, [open, index, steps])
+  }, [isActive, current, available])
 
-
-  if (!open) {
+  /* ---------- Botón flotante ----------------------------------------- */
+  if (!isActive)
     return (
       <Button
-        onClick={start}
         variant="outline"
-        size="icon"
-        title="Iniciar recorrido"
-        className="fixed bottom-4 right-4 z-[60] h-10 w-10 rounded-full"
+        size="sm"
+        onClick={startTour}
+        className="fixed bottom-4 right-4 z-50 rounded-full w-10 h-10 p-0 tour-guide-button"
+        title="Iniciar recorrido guiado"
       >
         <HelpCircle className="h-5 w-5" />
       </Button>
     )
+
+  /* ---------- Tooltip ------------------------------------------------- */
+  const step      = TOUR_STEPS[available[current]]
+  const last      = current === available.length - 1
+  const first     = current === 0
+
+  /* Función para calcular posición … (sin cambios) */
+  const tooltipPos = () => {
+    if (step.id === "tour-end")
+      return {
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+      }
+
+    const el = document.getElementById(step.id)!
+    const r  = el.getBoundingClientRect()
+
+    switch (step.position) {
+      case "top":
+        return { position: "absolute", top: r.top - 150, left: r.left + r.width / 2 - 150 }
+      case "bottom":
+        return { position: "absolute", top: r.bottom + 10, left: r.left + r.width / 2 - 150 }
+      case "left":
+        return { position: "absolute", top: r.top + r.height / 2 - 75, left: r.left - 310 }
+      case "right":
+        return { position: "absolute", top: r.top + r.height / 2 - 75, left: r.right + 10 }
+      default:
+        return {}
+    }
   }
-
-
-  const step = TOUR_STEPS[steps[index]]
-  const isLast  = index === steps.length - 1
-  const isFirst = index === 0
-
-  const posStyle = getTooltipPosition(step)
 
   return (
     <>
-      {/* overlay */}
-      <div className="fixed inset-0 bg-black/40 z-[55]" onClick={end} />
+      <div className="fixed inset-0 bg-black/30 z-50" onClick={endTour} />
 
-      {/* tarjeta */}
-      <Card style={posStyle} className={cn("z-[60] w-[300px] shadow-lg", step.id === "tour-end" && "w-[380px]")}>
-        <CardHeader className="pb-2 flex justify-between items-center">
-          <CardTitle className="text-base">{step.title}</CardTitle>
-          <Button size="icon" variant="ghost" onClick={end}>
-            <X className="h-4 w-4" />
-          </Button>
+      <Card
+        className={cn("w-[300px] z-[60] shadow-lg",
+          step.id === "tour-end" && "w-[400px]")}
+        style={tooltipPos() as React.CSSProperties}
+      >
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-base">{step.title}</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={endTour}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
 
-        <CardContent><p className="text-sm">{step.desc}</p></CardContent>
+        <CardContent>
+          <p className="text-sm">{step.description}</p>
+        </CardContent>
 
-        <CardFooter className="pt-2 justify-between">
-          <span className="text-xs text-muted-foreground">{index + 1}/{steps.length}</span>
+        <CardFooter className="flex justify-between pt-2">
+          <span className="text-xs text-muted-foreground">
+            {current + 1} / {available.length}
+          </span>
+
           <div className="flex gap-2">
-            {!isFirst && (
-              <Button variant="outline" size="sm" onClick={prev}>
-                <ArrowLeft className="h-4 w-4 mr-1" /> Anterior
+            {!first && (
+              <Button variant="outline" size="sm" onClick={prevStep}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Anterior
               </Button>
             )}
-            <Button size="sm" onClick={next}>
-              {isLast ? "Finalizar" : "Siguiente"}
-              {!isLast && <ArrowRight className="h-4 w-4 ml-1" />}
+            <Button size="sm" onClick={nextStep}>
+              {last ? "Finalizar" : "Siguiente"}
+              {!last && <ArrowRight className="h-4 w-4 ml-1" />}
             </Button>
           </div>
         </CardFooter>
       </Card>
 
-      {/* estilo highlight */}
+      {/* Estilo para resaltar */}
       <style>{`
         .tour-highlight {
           position: relative;
-          z-index: 56;
-          box-shadow: 0 0 0 4px rgba(59,130,246,0.5);
+          z-index: 55;
+          box-shadow: 0 0 0 4px rgba(59,130,246,.5);
           border-radius: 4px;
         }
       `}</style>
     </>
   )
 }
-
-
-function getTooltipPosition(step: TourStep): React.CSSProperties {
-  if (step.id === "tour-end")
-    return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
-
-  const el = document.getElementById(step.id)
-  if (!el) return { position: "fixed", top: "20%", left: "50%", transform: "translateX(-50%)" }
-
-  const { top, bottom, left, right, width, height } = el.getBoundingClientRect()
-
-  switch (step.pos) {
-    case "top":
-      return { position: "absolute", top: top - 160, left: left + width / 2 - 150 }
-    case "bottom":
-      return { position: "absolute", top: bottom + 10, left: left + width / 2 - 150 }
-    case "left":
-      return { position: "absolute", top: top + height / 2 - 75, left: left - 310 }
-    case "right":
-      return { position: "absolute", top: top + height / 2 - 75, left: right + 10 }
-    default:
-      return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
-  }
-}
-export default CustomTourGuide

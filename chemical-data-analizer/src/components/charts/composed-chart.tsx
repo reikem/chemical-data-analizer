@@ -1,9 +1,9 @@
 /* -----------------------------------------------------------
-   ComposedChart.tsx  —  con MultiElementSelect interno
+   ComposedChart.tsx — selector múltiple + export PNG
    ----------------------------------------------------------- */
-   import { useMemo, useState } from "react"
+   import { useMemo, useRef, useState } from "react"
    import {
-     ComposedChart as RechartsComposedChart,
+     ComposedChart as ReComposedChart,
      Line,
      Bar,
      Area,
@@ -14,31 +14,29 @@
      Legend,
      ResponsiveContainer,
    } from "recharts"
-   
-   import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+   import { Card, CardHeader, CardContent, CardTitle } from "../ui/card"
    import { Alert, AlertDescription } from "../ui/alert"
+   import { Button } from "../ui/button"
+   import { Download } from "lucide-react"
+   import { toPng } from "html-to-image"
+   
    import { MultiElementSelect } from "../multi-element-select"
    import type { ChemicalData } from "../../providers/type/data-types"
    
    /* ------------------------------------------------------------------ */
-   /*  PROPS                                                             */
-   /* ------------------------------------------------------------------ */
    interface ComposedChartProps {
      data: ChemicalData
    }
-   
-   /* ------------------------------------------------------------------ */
-   /*  COMPONENTE                                                        */
    /* ------------------------------------------------------------------ */
    export function ComposedChart({ data }: ComposedChartProps) {
-     /* 1. Selección interna ------------------------------------------- */
      const [selected, setSelected] = useState<string[]>([])
+     const chartRef = useRef<HTMLDivElement>(null)
    
-     /* 2. Datos transformados ----------------------------------------- */
+     /* datos para los elementos elegidos */
      const chartData = useMemo(() => {
        if (!selected.length) return []
        return data.samples.map((s) => {
-         const row: Record<string, any> = { name: s.date }
+         const row: Record<string, any> = { date: s.date }
          selected.forEach((el) => {
            const idx = data.elements.findIndex((e) => e.name === el)
            row[el] = idx !== -1 ? s.values[idx] ?? 0 : 0
@@ -47,18 +45,31 @@
        })
      }, [data, selected])
    
-     /* 3. Colores y tipo de trazo ------------------------------------- */
+     /* colores y tipo de serie */
      const colors = [
-       "#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe",
-       "#00C49F", "#FFBB28", "#FF8042", "#a4de6c", "#d0ed57",
+       "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#6366f1",
+       "#14b8a6", "#eab308", "#f97316", "#8b5cf6", "#0ea5e9",
      ]
-     const chartType = (i: number) =>
-       (["bar", "line", "area"] as const)[i % 3]
+     const chartType = (i: number) => (["bar", "line", "area"] as const)[i % 3]
    
-     /* 4. Render ------------------------------------------------------- */
+     /* exportar */
+     const handleExportPNG = async () => {
+       if (!chartRef.current) return
+       try {
+         const url = await toPng(chartRef.current, { cacheBust: true })
+         const link = document.createElement("a")
+         link.download = "composed-chart.png"
+         link.href = url
+         link.click()
+       } catch (err) {
+         console.error(err)
+         alert("No se pudo generar la imagen.")
+       }
+     }
+   
+     /* render */
      return (
        <Card className="w-full h-full">
-         {/* encabezado con selector */}
          <CardHeader>
            <CardTitle className="text-base mb-3">Gráfico compuesto</CardTitle>
    
@@ -69,9 +80,20 @@
              placeholder="Seleccionar elementos…"
              maxHeight={300}
            />
+   
+           <div className="mt-3">
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={handleExportPNG}
+               disabled={!selected.length}
+             >
+               <Download className="mr-1 h-4 w-4" />
+               Exportar PNG
+             </Button>
+           </div>
          </CardHeader>
    
-         {/* contenido */}
          <CardContent className="p-4">
            {!selected.length ? (
              <Alert>
@@ -80,58 +102,40 @@
                </AlertDescription>
              </Alert>
            ) : (
-             <ResponsiveContainer width="100%" height={400}>
-               <RechartsComposedChart data={chartData}>
-                 <CartesianGrid stroke="#f5f5f5" />
-                 <XAxis
-                   dataKey="name"
-                   tickFormatter={(v) =>
-                     typeof v === "string" ? v.split(" ")[0] : v
-                   }
-                 />
-                 <YAxis />
-                 <Tooltip
-                   formatter={(v, n) =>
-                     [typeof v === "number" ? v.toFixed(2) : v, n]
-                   }
-                 />
-                 <Legend />
+             <div ref={chartRef}>
+               <ResponsiveContainer width="100%" height={400}>
+                 <ReComposedChart data={chartData}>
+                   <CartesianGrid stroke="#f5f5f5" />
+                   <XAxis
+                     dataKey="date"
+                     tickFormatter={(v) =>
+                       typeof v === "string" ? v.split(" ")[0] : v
+                     }
+                   />
+                   <YAxis />
+                   <Tooltip formatter={(v, n) => [v, n]} />
+                   <Legend />
    
-                 {selected.map((el, i) => {
-                   const color = colors[i % colors.length]
-                   switch (chartType(i)) {
-                     case "bar":
-                       return (
-                         <Bar key={el} dataKey={el} fill={color} name={el} />
-                       )
-                     case "line":
-                       return (
-                         <Line
-                           key={el}
-                           type="monotone"
-                           dataKey={el}
-                           stroke={color}
-                           activeDot={{ r: 7 }}
-                           name={el}
-                         />
-                       )
-                     case "area":
-                     default:
-                       return (
-                         <Area
-                           key={el}
-                           type="monotone"
-                           dataKey={el}
-                           stroke={color}
-                           fill={color}
-                           fillOpacity={0.3}
-                           name={el}
-                         />
-                       )
-                   }
-                 })}
-               </RechartsComposedChart>
-             </ResponsiveContainer>
+                   {selected.map((el, i) => {
+                     const clr = colors[i % colors.length]
+                     switch (chartType(i)) {
+                       case "bar":
+                         return <Bar  key={el} dataKey={el} fill={clr} name={el} />
+                       case "line":
+                         return (
+                           <Line key={el} type="monotone" dataKey={el}
+                                 stroke={clr} activeDot={{ r: 7 }} name={el} />
+                         )
+                       default:
+                         return (
+                           <Area key={el} type="monotone" dataKey={el}
+                                 stroke={clr} fill={clr} fillOpacity={0.3} name={el} />
+                         )
+                     }
+                   })}
+                 </ReComposedChart>
+               </ResponsiveContainer>
+             </div>
            )}
          </CardContent>
        </Card>

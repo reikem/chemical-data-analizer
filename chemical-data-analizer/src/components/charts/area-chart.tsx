@@ -1,132 +1,155 @@
-import { useState, useEffect, useMemo } from "react"
+/* -----------------------------------------------------------
+   AreaChart.tsx  —  con selector interno + botón “Exportar PNG”
+   ----------------------------------------------------------- */
 
-import { Card, CardContent } from "../ui/card"
-import { Alert, AlertDescription } from "../ui/alert"
-import {
-  AreaChart as ReAreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts"
-
-import { MultiElementSelect } from "../multi-element-select"
-import type { ChemicalData } from "../../providers/type/data-types"
-
-interface AreaChartProps {
-  data: ChemicalData
-
-  selectedElements?: string[]
-}
-
-
-export function AreaChart({
-  data,
-  selectedElements = [],
-}: AreaChartProps) {
-
-  const [chosen, setChosen] = useState<string[]>(selectedElements)
-
-  useEffect(() => {
-    if (
-      selectedElements.length &&
-      selectedElements.join("|") !== chosen.join("|")
-    ) {
-      setChosen(selectedElements)
-    }
-
-  }, [selectedElements])
-
-
-  const noSamples  = !data || data.samples.length === 0
-  const noChosen   = chosen.length === 0
-
-  const chartData = useMemo(() => {
-    if (noSamples || noChosen) return []
-
-    return data.samples.map((s) => {
-      const pt: Record<string, any> = { name: s.date }
-      chosen.forEach((el) => {
-        const idx = data.elements.findIndex((e) => e.name === el)
-        pt[el] =
-          idx !== -1 && idx < s.values.length && typeof s.values[idx] === "number"
-            ? s.values[idx]
-            : 0
-      })
-      return pt
-    })
-  }, [data, chosen, noSamples, noChosen])
-
-  /* ---------------------------------------------------------------------- */
-  /*  4. Paleta de colores (rotativa)                                       */
-  /* ---------------------------------------------------------------------- */
-  const colors = [
-    "#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe",
-    "#00C49F", "#FFBB28", "#FF8042", "#a4de6c", "#d0ed57",
-  ]
-
-  /* ---------------------------------------------------------------------- */
-  /*  5. Render UI                                                          */
-  /* ---------------------------------------------------------------------- */
-  return (
-    <Card className="w-full h-full">
-      {/* selector encima del gráfico ------------------------------------- */}
-      <div className="p-4 border-b">
-        <MultiElementSelect
-          allElements={data.elements.map((e) => e.name)}
-          value={chosen}
-          onChange={setChosen}
-          placeholder="Seleccionar elementos…"
-          maxHeight={260}
-        />
-      </div>
-
-      <CardContent className="p-4">
-        {noSamples || noChosen ? (
-          <Alert className="my-4">
-            <AlertDescription>
-              {noSamples
-                ? "No hay datos disponibles para mostrar."
-                : "Selecciona uno o más elementos para visualizar el gráfico."}
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <ReAreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                tickFormatter={(v) =>
-                  typeof v === "string" ? v.split(" ")[0] : v
-                }
-              />
-              <YAxis />
-              <Tooltip
-                formatter={(v, n) => [
-                  typeof v === "number" ? v.toFixed(2) : v,
-                  n,
-                ]}
-              />
-              <Legend />
-              {chosen.map((el, i) => (
-                <Area
-                  key={el}
-                  type="monotone"
-                  dataKey={el}
-                  stroke={colors[i % colors.length]}
-                  fill={colors[i % colors.length]}
-                  fillOpacity={0.3}
-                  activeDot={{ r: 8 }}
-                  name={el}
-                />
-              ))}
-            </ReAreaChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+   import { useState, useMemo, useRef } from "react"
+   import {
+     AreaChart as ReAreaChart,
+     Area,
+     XAxis,
+     YAxis,
+     CartesianGrid,
+     Tooltip,
+     Legend,
+     ResponsiveContainer,
+   } from "recharts"
+   import { Card, CardHeader, CardContent, CardTitle } from "../ui/card"
+   import { Alert, AlertDescription } from "../ui/alert"
+   import { Button } from "../ui/button"
+   import { Download } from "lucide-react"
+   import { MultiElementSelect } from "../multi-element-select"
+   import { toPng } from "html-to-image"
+   import type { ChemicalData } from "../../providers/type/data-types"
+   
+   /* ------------------------------------------------------------------ */
+   interface AreaChartProps {
+     data: ChemicalData
+   }
+   /* ------------------------------------------------------------------ */
+   export function AreaChart({ data }: AreaChartProps) {
+     /* 1. selección local ------------------------------------------------- */
+     const [selected, setSelected] = useState<string[]>([])
+   
+     /* 2. ref al contenedor para exportar -------------------------------- */
+     const chartRef = useRef<HTMLDivElement>(null)
+   
+     /* 3. datos transformados ------------------------------------------- */
+     const chartData = useMemo(() => {
+       if (!selected.length) return []
+       return data.samples.map((s) => {
+         const row: Record<string, any> = { date: s.date }
+         selected.forEach((el) => {
+           const idx = data.elements.findIndex((e) => e.name === el)
+           row[el] = idx !== -1 ? s.values[idx] ?? 0 : 0
+         })
+         return row
+       })
+     }, [data, selected])
+   
+     /* 4. colores -------------------------------------------------------- */
+     const colors = [
+       "#3b82f6",
+       "#10b981",
+       "#f59e0b",
+       "#ef4444",
+       "#6366f1",
+       "#14b8a6",
+       "#eab308",
+       "#f97316",
+       "#8b5cf6",
+       "#0ea5e9",
+     ]
+   
+     /* 5. exportar como PNG --------------------------------------------- */
+     const handleExportPNG = async () => {
+       if (!chartRef.current) return
+       try {
+         const dataUrl = await toPng(chartRef.current, { cacheBust: true })
+         const link = document.createElement("a")
+         link.download = "area-chart.png"
+         link.href = dataUrl
+         link.click()
+       } catch (err) {
+         console.error("Error al exportar gráfico:", err)
+         alert("No se pudo generar la imagen. Prueba nuevamente.")
+       }
+     }
+   
+     /* 6. render --------------------------------------------------------- */
+     return (
+       <Card className="w-full h-full">
+         {/* header: selector + botón exportar */}
+         <CardHeader>
+           <CardTitle className="text-base mb-3">Gráfico de áreas</CardTitle>
+   
+           <MultiElementSelect
+             allElements={data.elements.map((e) => e.name)}
+             value={selected}
+             onChange={setSelected}
+             placeholder="Elegir elementos…"
+             maxHeight={300}
+           />
+   
+           {/* botón “Exportar PNG” debajo del selector */}
+           <div className="mt-3">
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={handleExportPNG}
+               disabled={!selected.length}
+               title="Exportar gráfico como imagen PNG"
+             >
+               <Download className="mr-1 h-4 w-4" />
+               Exportar PNG
+             </Button>
+           </div>
+         </CardHeader>
+   
+         {/* contenido */}
+         <CardContent className="p-4">
+           {!selected.length ? (
+             <Alert>
+               <AlertDescription>
+                 Selecciona uno o varios elementos para visualizar la gráfica.
+               </AlertDescription>
+             </Alert>
+           ) : (
+             <div ref={chartRef}>
+               <ResponsiveContainer width="100%" height={400}>
+                 <ReAreaChart data={chartData}>
+                   <CartesianGrid strokeDasharray="3 3" />
+                   <XAxis
+                     dataKey="date"
+                     tickFormatter={(v) =>
+                       typeof v === "string" ? v.split(" ")[0] : v
+                     }
+                   />
+                   <YAxis />
+                   <Tooltip
+                     formatter={(v, n) => [
+                       typeof v === "number" ? v.toFixed(2) : v,
+                       n,
+                     ]}
+                   />
+                   <Legend />
+                   {selected.map((el, i) => (
+                     <Area
+                       key={el}
+                       type="monotone"
+                       dataKey={el}
+                       stroke={colors[i % colors.length]}
+                       fill={colors[i % colors.length]}
+                       fillOpacity={0.3}
+                       activeDot={{ r: 6 }}
+                       name={el}
+                     />
+                   ))}
+                 </ReAreaChart>
+               </ResponsiveContainer>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+     )
+   }
+   
