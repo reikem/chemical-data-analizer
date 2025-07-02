@@ -1,54 +1,92 @@
-# React + TypeScript + Vite
+# 🔬 Analizador de Datos Químicos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Analizador de Datos Químicos** es una SPA (single–page application) construida con React + Vite que permite **cargar, limpiar, analizar y visualizar** resultados de análisis de aceite / muestras químicas.  
+Incluye exportaciones (PDF, Excel, SQL), estadísticas automáticas y un recorrido guiado para nuevos/as usuarios/as.
 
-Currently, two official plugins are available:
+![Pantalla principal](src/assets/proyecto.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## ✨ Características principales
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Área | Descripción |
+|------|-------------|
+| **Carga de archivos** | Admite CSV, XLSX. El usuario indica qué columna contiene la fecha y su formato. |
+| **Normalización** | Conversión automática de fechas, números y detección de cabeceras. |
+| **Gráficos interactivos** | Line, Bar, Area, Scatter, Composed, Heat-map (Recharts) con selector múltiple de elementos. |
+| **Tabla & paginación** | DataTable con filtrado, orden y paginación (TanStack Table). |
+| **Estadísticas** | Mín · Máx · Media + diagnóstico/recomendación auto-generados. |
+| **Exportación** | PDF (html-to-image + jsPDF), Excel (xlsx), SQL (sentencias `INSERT`). |
+| **Tour guiado** | On-boarding con pasos resaltados + modal de bienvenida. |
+| **Dark / Light mode** | Via shadcn/ui ThemeProvider. |
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🛠️ Stack / Tecnologías
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Capa | Librerías / herramientas |
+|------|--------------------------|
+| **Frontend** | **React 18**, **Vite**, TypeScript, TailwindCSS, shadcn/ui, Lucide-react |
+| **Estado / datos** | TanStack **React-Query** & **React-Table** |
+| **Gráficos** | **Recharts** |
+| **Exportación** | `xlsx`, `html-to-image`, `jsPDF`, `file-saver` |
+| **Testing** | Vitest + React Testing Library (esqueleto) |
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+> Nota: no se requiere backend — todo se procesa en el navegador.
+
+---
+
+## 📁 Estructura de carpetas (resumen)
+
+src/
+├─ components/ ← UI re-usable (charts/, ui/, FileUploader, DataDisplay…)
+├─ hook/ ← hooks TanStack (useChemicalData, …)
+├─ lib/ ← helpers (file-processor, pdf-generator, date-utils)
+├─ pages/ ← Home.tsx
+├─ providers/ ← TanStack provider, tipos, rangos de análisis
+├─ assets/ ← iconos/imágenes
+└─ main.tsx ← punto de entrada Vite
+
+## 🚀 Puesta en marcha
+
+> Requisitos: **Node >= 18**, **npm | yarn | pnpm**
+
+```bash
+# 1. clona el repo
+git clone https://github.com/reikem/chemical-data-analizer.git
+cd chemical-data-analizer
+
+# 2. instala dependencias
+pnpm install              # o npm install / yarn
+
+# 3. ejecuta en modo desarrollo
+pnpm dev                  # http://localhost:5173
+
+# 4. build producción
+pnpm build && pnpm preview
+
+🖱️ Flujo de uso
+Cargar archivo en la tarjeta de inicio.
+
+Elegir columna(s) de fecha + formato → Continuar.
+
+Explorar pestañas «Gráficos», «Tabla», «Estadísticas».
+
+Filtrar rango de fechas y/o seleccionar elementos químicos (multi-selector).
+
+Exportar a PDF / Excel / SQL o imprimir.
+
+Si es tu primera visita, acepta el recorrido guiado para conocer todas las zonas de la UI.
+
+🙌 Contribuir
+Haz fork y crea una rama feat/mi-feature.
+
+pnpm lint && pnpm test antes del commit.
+
+Envía un Pull Request descriptivo.
+
+Los issues con capturas y pasos para reproducir son bienvenidos.
+
+📄 Licencia
+Distribuido bajo Apache-2.0.
+Úsalo libremente citando el proyecto original.

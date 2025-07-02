@@ -1,6 +1,5 @@
 
 import * as XLSX from "xlsx"
-import { toPng } from "html-to-image"
 import { getAtomicNumber } from "./periodic-table"
 import type { ChemicalData } from "../providers/type/data-types"
 
@@ -26,8 +25,6 @@ function addDataSheet(workbook: XLSX.WorkBook, data: ChemicalData, selectedEleme
   const headers = ["Fecha", "Máquina"]
 
   selectedElements.forEach((element) => {
-    const atomicNumber = getAtomicNumber(element)
-    const atomicNumberText = atomicNumber !== null && atomicNumber > 0 ? atomicNumber.toString() : "-"
     headers.push(`Nº Atómico (${element})`, element)
   })
 
@@ -167,9 +164,7 @@ async function addChartsSheet(workbook: XLSX.WorkBook): Promise<void> {
 
     const activeChart = document.querySelector(".recharts-responsive-container")
     if (activeChart) {
-      const chartImage = await toPng(activeChart as HTMLElement, { quality: 0.95 })
 
-      const base64 = chartImage.split(",")[1]
 
       const worksheet = XLSX.utils.aoa_to_sheet([["Gráfico"], [""]]) 
 

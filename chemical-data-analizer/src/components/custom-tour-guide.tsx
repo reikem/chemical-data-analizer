@@ -1,282 +1,172 @@
-import { useState, useEffect } from "react"
+
+
+import * as React from "react"
+import {
+  HelpCircle,
+  X,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react"
+
 import { Button } from "./ui/button"
-import { HelpCircle, X, ArrowRight, ArrowLeft } from "lucide-react"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "./ui/card"
 import { cn } from "../lib/utils"
 
 
-// Definición de los pasos del recorrido
-const tourSteps = [
-  {
-    id: "file-upload-section",
-    title: "Carga de Archivos",
-    description: "Aquí puedes cargar tus archivos CSV o Excel con datos de elementos químicos.",
-    position: "bottom",
-  },
-  {
-    id: "column-selector",
-    title: "Selector de Columnas",
-    description: "Después de cargar un archivo, selecciona qué columna contiene las fechas y su formato.",
-    position: "right",
-  },
-  {
-    id: "results-section",
-    title: "Resultados del Análisis",
-    description: "Aquí verás los resultados del análisis de tus datos químicos.",
-    position: "top",
-  },
-  {
-    id: "export-buttons",
-    title: "Exportación",
-    description: "Exporta tus resultados a PDF o Excel, o imprímelos directamente.",
-    position: "bottom",
-  },
-  {
-    id: "summary-cards",
-    title: "Resumen",
-    description:
-      "Estas tarjetas muestran un resumen de tus datos: total de muestras, elementos analizados y rango de fechas.",
-    position: "bottom",
-  },
-  {
-    id: "tabs-section",
-    title: "Pestañas de Visualización",
-    description: "Cambia entre diferentes vistas: gráficos, tabla de datos y estadísticas.",
-    position: "top",
-  },
-  {
-    id: "date-range-picker",
-    title: "Selector de Rango de Fechas",
-    description: "Filtra tus datos por un rango de fechas específico.",
-    position: "right",
-  },
-  {
-    id: "elements-selector",
-    title: "Selector de Elementos",
-    description: "Selecciona qué elementos químicos quieres visualizar en los gráficos.",
-    position: "right",
-  },
-  {
-    id: "chart-types",
-    title: "Tipos de Gráficos",
-    description: "Cambia entre diferentes tipos de visualizaciones: línea, barras, área, etc.",
-    position: "top",
-  },
-  {
-    id: "chart-display",
-    title: "Visualización de Gráficos",
-    description: "Aquí se muestran los gráficos de tus datos químicos según los elementos seleccionados.",
-    position: "left",
-  },
-  {
-    id: "data-table",
-    title: "Tabla de Datos",
-    description: "Visualiza todos tus datos en formato de tabla, con opciones de paginación.",
-    position: "top",
-  },
-  {
-    id: "stats-table",
-    title: "Estadísticas",
-    description:
-      "Consulta estadísticas detalladas de cada elemento químico, incluyendo diagnósticos y recomendaciones.",
-    position: "top",
-  },
-  {
-    id: "tour-end",
-    title: "¡Recorrido Completado!",
-    description:
-      "Ahora ya conoces todas las funcionalidades de la aplicación. Puedes volver a iniciar este recorrido en cualquier momento haciendo clic en el botón de ayuda.",
-    position: "center",
-  },
+export type TourStep = {
+  id:        string          // id del elemento a resaltar
+  title:     string
+  desc:      string
+  pos:       "top" | "bottom" | "left" | "right" | "center"
+}
+
+export const TOUR_STEPS: TourStep[] = [
+  { id: "file-upload-section", title: "Carga de archivos",   desc: "Arrastra aquí tu CSV/XLSX.",        pos: "bottom" },
+  { id: "column-selector",     title: "Selector de columnas",desc: "Elige la(s) columna(s) de fecha.",  pos: "right"  },
+  { id: "results-section",     title: "Resultados",          desc: "Vista general del análisis.",       pos: "top"    },
+  { id: "export-buttons",      title: "Exportar",            desc: "Genera PDF, Excel o imprime.",      pos: "bottom" },
+  { id: "summary-cards",       title: "Resumen",             desc: "Muestras, elementos y fechas.",     pos: "bottom" },
+  { id: "tabs-section",        title: "Pestañas",            desc: "Gráficos, tabla y estadísticas.",   pos: "top"    },
+  { id: "tour-end",            title: "¡Listo!",             desc: "Ya conoces la interfaz 😊",          pos: "center" },
 ]
 
-export function CustomTourGuide() {
-  const [isActive, setIsActive] = useState(false)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [availableSteps, setAvailableSteps] = useState<number[]>([])
 
-  // Iniciar el recorrido
-  const startTour = () => {
-    // Identificar qué pasos están disponibles en el DOM actual
-    const steps = tourSteps
-      .map((step, index) => {
-        if (step.id === "tour-end" || document.getElementById(step.id)) {
-          return index
-        }
-        return -1
-      })
-      .filter((index) => index !== -1)
+export const CustomTourGuide: React.FC = () => {
+  const [open,    setOpen]   = React.useState(false)
+  const [index,   setIndex]  = React.useState(0)
+  const [steps,   setSteps]  = React.useState<number[]>([])
 
-    setAvailableSteps(steps)
-    setCurrentStep(0)
-    setIsActive(true)
-  }
 
-  // Finalizar el recorrido
-  const endTour = () => {
-    setIsActive(false)
-  }
+  const start = (): void => {
+    const available = TOUR_STEPS
+      .map((s, i) =>
+        s.id === "tour-end" || document.getElementById(s.id) ? i : -1,
+      )
+      .filter(i => i !== -1)
 
-  // Ir al siguiente paso
-  const nextStep = () => {
-    if (currentStep < availableSteps.length - 1) {
-      setCurrentStep(currentStep + 1)
-    } else {
-      endTour()
+    if (!available.length) {
+      console.warn("[tour] No hay elementos con los id esperados.")
+      return
     }
+    setSteps(available)
+    setIndex(0)
+    setOpen(true)
   }
 
-  // Ir al paso anterior
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1)
-    }
-  }
+  const end   = (): void => setOpen(false)
+  const next  = (): void => setIndex(i => (i < steps.length - 1 ? i + 1 : (end(), i)))
+  const prev  = (): void => setIndex(i => (i > 0 ? i - 1 : i))
 
-  // Efecto para resaltar el elemento actual
-  useEffect(() => {
-    if (!isActive || availableSteps.length === 0) return
 
-    const stepIndex = availableSteps[currentStep]
-    const step = tourSteps[stepIndex]
+  React.useEffect(() => {
+    if (!open || !steps.length) return
 
-    // Si es el paso final, no hay elemento para resaltar
+    const step = TOUR_STEPS[steps[index]]
     if (step.id === "tour-end") return
 
-    const element = document.getElementById(step.id)
-    if (!element) return
+    const el = document.getElementById(step.id)
+    if (!el) return
 
-    // Añadir clase para resaltar el elemento
-    element.classList.add("tour-highlight")
+    el.classList.add("tour-highlight")
+    el.scrollIntoView({ behavior: "smooth", block: "center" })
 
-    // Hacer scroll al elemento
-    element.scrollIntoView({ behavior: "smooth", block: "center" })
+    return () => el.classList.remove("tour-highlight")
+  }, [open, index, steps])
 
-    return () => {
-      // Limpiar la clase al cambiar de paso
-      element.classList.remove("tour-highlight")
-    }
-  }, [isActive, currentStep, availableSteps])
 
-  if (!isActive) {
+  if (!open) {
     return (
       <Button
+        onClick={start}
         variant="outline"
-        size="sm"
-        onClick={startTour}
-        className="fixed bottom-4 right-4 z-50 rounded-full w-10 h-10 p-0 tour-guide-button"
-        title="Iniciar recorrido guiado"
+        size="icon"
+        title="Iniciar recorrido"
+        className="fixed bottom-4 right-4 z-[60] h-10 w-10 rounded-full"
       >
         <HelpCircle className="h-5 w-5" />
       </Button>
     )
   }
 
-  const stepIndex = availableSteps[currentStep]
-  const step = tourSteps[stepIndex]
-  const isLastStep = currentStep === availableSteps.length - 1
-  const isFirstStep = currentStep === 0
 
-  // Calcular la posición del tooltip
-  const getTooltipPosition = () => {
-    if (step.id === "tour-end") {
-      return {
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-      }
-    }
+  const step = TOUR_STEPS[steps[index]]
+  const isLast  = index === steps.length - 1
+  const isFirst = index === 0
 
-    const element = document.getElementById(step.id)
-    if (!element) return {}
-
-    const rect = element.getBoundingClientRect()
-
-    switch (step.position) {
-      case "top":
-        return {
-          position: "absolute",
-          top: `${rect.top - 150}px`,
-          left: `${rect.left + rect.width / 2 - 150}px`,
-        }
-      case "bottom":
-        return {
-          position: "absolute",
-          top: `${rect.bottom + 10}px`,
-          left: `${rect.left + rect.width / 2 - 150}px`,
-        }
-      case "left":
-        return {
-          position: "absolute",
-          top: `${rect.top + rect.height / 2 - 75}px`,
-          left: `${rect.left - 310}px`,
-        }
-      case "right":
-        return {
-          position: "absolute",
-          top: `${rect.top + rect.height / 2 - 75}px`,
-          left: `${rect.right + 10}px`,
-        }
-      default:
-        return {
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }
-    }
-  }
+  const posStyle = getTooltipPosition(step)
 
   return (
     <>
-      {/* Overlay semi-transparente */}
-      <div className="fixed inset-0 bg-black/30 z-50" onClick={endTour} />
+      {/* overlay */}
+      <div className="fixed inset-0 bg-black/40 z-[55]" onClick={end} />
 
-      {/* Tooltip del paso actual */}
-      <Card
-        className={cn("w-[300px] z-[60] shadow-lg", step.id === "tour-end" && "w-[400px]")}
-        style={getTooltipPosition() as React.CSSProperties}
-      >
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-base">{step.title}</CardTitle>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={endTour}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* tarjeta */}
+      <Card style={posStyle} className={cn("z-[60] w-[300px] shadow-lg", step.id === "tour-end" && "w-[380px]")}>
+        <CardHeader className="pb-2 flex justify-between items-center">
+          <CardTitle className="text-base">{step.title}</CardTitle>
+          <Button size="icon" variant="ghost" onClick={end}>
+            <X className="h-4 w-4" />
+          </Button>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm">{step.description}</p>
-        </CardContent>
-        <CardFooter className="flex justify-between pt-2">
-          <div className="text-xs text-muted-foreground">
-            {currentStep + 1} / {availableSteps.length}
-          </div>
+
+        <CardContent><p className="text-sm">{step.desc}</p></CardContent>
+
+        <CardFooter className="pt-2 justify-between">
+          <span className="text-xs text-muted-foreground">{index + 1}/{steps.length}</span>
           <div className="flex gap-2">
-            {!isFirstStep && (
-              <Button variant="outline" size="sm" onClick={prevStep}>
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Anterior
+            {!isFirst && (
+              <Button variant="outline" size="sm" onClick={prev}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Anterior
               </Button>
             )}
-            <Button size="sm" onClick={nextStep}>
-              {isLastStep ? "Finalizar" : "Siguiente"}
-              {!isLastStep && <ArrowRight className="h-4 w-4 ml-1" />}
+            <Button size="sm" onClick={next}>
+              {isLast ? "Finalizar" : "Siguiente"}
+              {!isLast && <ArrowRight className="h-4 w-4 ml-1" />}
             </Button>
           </div>
         </CardFooter>
       </Card>
 
-      {/* Estilos para el elemento resaltado */}
+      {/* estilo highlight */}
       <style>{`
         .tour-highlight {
           position: relative;
-          z-index: 55;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+          z-index: 56;
+          box-shadow: 0 0 0 4px rgba(59,130,246,0.5);
           border-radius: 4px;
         }
       `}</style>
     </>
   )
 }
+
+
+function getTooltipPosition(step: TourStep): React.CSSProperties {
+  if (step.id === "tour-end")
+    return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
+
+  const el = document.getElementById(step.id)
+  if (!el) return { position: "fixed", top: "20%", left: "50%", transform: "translateX(-50%)" }
+
+  const { top, bottom, left, right, width, height } = el.getBoundingClientRect()
+
+  switch (step.pos) {
+    case "top":
+      return { position: "absolute", top: top - 160, left: left + width / 2 - 150 }
+    case "bottom":
+      return { position: "absolute", top: bottom + 10, left: left + width / 2 - 150 }
+    case "left":
+      return { position: "absolute", top: top + height / 2 - 75, left: left - 310 }
+    case "right":
+      return { position: "absolute", top: top + height / 2 - 75, left: right + 10 }
+    default:
+      return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
+  }
+}
+export default CustomTourGuide

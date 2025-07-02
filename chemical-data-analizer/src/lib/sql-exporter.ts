@@ -14,7 +14,7 @@ export function generateSQLExport(data: ChemicalData, tableName = "chemical_data
 
   const sqlStatements: string[] = []
 
-  // Crear tabla para los elementos
+
   sqlStatements.push(`-- Tabla de elementos químicos
 CREATE TABLE IF NOT EXISTS ${tableName}_elements (
   id INTEGER PRIMARY KEY,
@@ -27,7 +27,6 @@ DELETE FROM ${tableName}_elements;
 
 -- Insertar elementos`)
 
-  // Insertar elementos
   data.elements.forEach((element, index) => {
     sqlStatements.push(
       `INSERT INTO ${tableName}_elements (id, name, unit) VALUES (${index + 1}, '${escapeSQL(
@@ -36,7 +35,7 @@ DELETE FROM ${tableName}_elements;
     )
   })
 
-  // Crear tabla para las muestras
+
   sqlStatements.push(`
 -- Tabla de muestras
 CREATE TABLE IF NOT EXISTS ${tableName}_samples (
@@ -55,11 +54,10 @@ DELETE FROM ${tableName}_samples;
 
 -- Insertar muestras`)
 
-  // Insertar muestras
+
   data.samples.forEach((sample, index) => {
     sqlStatements.push(
-      `INSERT INTO ${tableName}_samples (id, date, machine, unit, component, zone, country, model) VALUES (${
-        index + 1
+      `INSERT INTO ${tableName}_samples (id, date, machine, unit, component, zone, country, model) VALUES (${index + 1
       }, '${escapeSQL(sample.date)}', '${escapeSQL(sample.machine || "")}', '${escapeSQL(
         sample.unit || "",
       )}', '${escapeSQL(sample.component || "")}', '${escapeSQL(sample.zone || "")}', '${escapeSQL(
@@ -68,7 +66,7 @@ DELETE FROM ${tableName}_samples;
     )
   })
 
-  // Crear tabla para los valores
+
   sqlStatements.push(`
 -- Tabla de valores
 CREATE TABLE IF NOT EXISTS ${tableName}_values (
@@ -85,20 +83,18 @@ DELETE FROM ${tableName}_values;
 
 -- Insertar valores`)
 
-  // Insertar valores
+
   data.samples.forEach((sample, sampleIndex) => {
     sample.values.forEach((value, elementIndex) => {
       if (elementIndex < data.elements.length) {
         sqlStatements.push(
-          `INSERT INTO ${tableName}_values (sample_id, element_id, value) VALUES (${sampleIndex + 1}, ${
-            elementIndex + 1
+          `INSERT INTO ${tableName}_values (sample_id, element_id, value) VALUES (${sampleIndex + 1}, ${elementIndex + 1
           }, ${value});`,
         )
       }
     })
   })
 
-  // Crear vistas para facilitar consultas
   sqlStatements.push(`
 -- Vista para facilitar consultas
 CREATE VIEW IF NOT EXISTS ${tableName}_view AS
@@ -137,9 +133,7 @@ function escapeSQL(str: string): string {
   return str.replace(/'/g, "''")
 }
 
-/**
- * Descarga el contenido SQL como un archivo
- */
+
 export function downloadSQL(sql: string, filename = "chemical_data_export.sql"): void {
   const blob = new Blob([sql], { type: "text/plain" })
   const url = URL.createObjectURL(blob)
@@ -149,7 +143,7 @@ export function downloadSQL(sql: string, filename = "chemical_data_export.sql"):
   document.body.appendChild(a)
   a.click()
 
-  // Limpiar
+
   setTimeout(() => {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)

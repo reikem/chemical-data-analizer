@@ -4,8 +4,7 @@ import type { DateRange } from "react-day-picker"
 import { DataTable } from "./data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { Button } from "./ui/button"
-import { Download, FileSpreadsheet, Printer } from "lucide-react"
-import { generatePDF } from "../lib/pdf-generator"
+import {  FileSpreadsheet, Printer } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { SQLExportDialog } from "./sql-export-dialog"
 import type { ChemicalData } from "../providers/type/data-types"
@@ -21,10 +20,10 @@ interface DataDisplayProps {
 
 export function DataDisplay({ data }: DataDisplayProps) {
   const [activeTab, setActiveTab] = useState<string>("charts")
-  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined })
+  const [dateRange] = useState<DateRange>({ from: undefined, to: undefined })
 
   // Usar TanStack Query para gestionar los datos
-  const { data: chemicalData } = useChemicalData()
+  useChemicalData()
   const { data: filteredData } = useFilteredData(data, [dateRange.from, dateRange.to])
   const { selectedElements, toggleElement, selectAll, deselectAll } = useSelectedElements(data)
 
@@ -35,15 +34,8 @@ export function DataDisplay({ data }: DataDisplayProps) {
     }
   }, [data, selectedElements.length, selectAll])
 
-  const handleDateRangeChange = (range: DateRange) => {
-    setDateRange(range)
-  }
 
-  const handleExportPDF = async () => {
-    if (filteredData) {
-      await generatePDF(filteredData, selectedElements, activeTab)
-    }
-  }
+
 
   const handleExportExcel = async () => {
     if (filteredData) {
@@ -142,11 +134,6 @@ export function DataDisplay({ data }: DataDisplayProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" id="export-buttons">
         <h2 className="text-xl font-semibold">Resultados del Análisis</h2>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleExportPDF} className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar a PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </Button>
           <Button onClick={handleExportExcel} variant="secondary" className="flex items-center gap-2">
             <FileSpreadsheet className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar a Excel</span>
@@ -214,8 +201,9 @@ export function DataDisplay({ data }: DataDisplayProps) {
               dateRange={[dateRange.from, dateRange.to]}
               onElementToggle={toggleElement}
               onSelectAll={selectAll}
-              onDeselectAll={deselectAll}
-              onDateRangeChange={handleDateRangeChange}
+              onDeselectAll={deselectAll} onDateRangeChange={function (): void {
+                throw new Error("Function not implemented.")
+              } }
             />
           </TabsContent>
 
