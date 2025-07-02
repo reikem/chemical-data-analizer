@@ -1,112 +1,98 @@
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
   type ColumnDef,
+  type PaginationState,
   type VisibilityState,
 } from "@tanstack/react-table"
 
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "./ui/table"
 import { Button } from "./ui/button"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "./ui/popover"
 import { Checkbox } from "./ui/checkbox"
+import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover"
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Columns,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Columns,
 } from "lucide-react"
 
-import type { ChemicalData } from "../providers/type/data-types"
 import { getAtomicNumber } from "../lib/periodic-table"
+import type { ChemicalData } from "../providers/type/data-types"
 
-/* -------------------------------------------------------------------------- */
-/*  PROPS                                                                     */
-/* -------------------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────── */
+
 interface DataTableProps {
   data: ChemicalData
-  diagnostics?: Record<
-    string,
-    { diagnostic: string; recommendation: string }
-  >
-  initialHidden?: string[]      // IDs de columnas que quieres ocultar al cargar
+  diagnostics?: Record<string, { diagnostic: string; recommendation: string }>
+  initialHidden?: string[]           // IDs seguros a ocultar
   pageSizeOptions?: number[]
 }
 
-/* -------------------------------------------------------------------------- */
-/*  COMPONENTE                                                                */
-/* -------------------------------------------------------------------------- */
+/* Helper: convierte cualquier cadena en un ID seguro para JS/React-Table */
+const makeId = (txt: string) =>
+  txt
+    .normalize("NFD")                // quita tildes
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9_]+/g, "_") // espacios, paréntesis, puntos → _
+    .replace(/^_+|_+$/g, "")         // sin _ al inicio/final
+
 export function DataTable({
   data,
   diagnostics,
-  initialHidden = ["machine", "unit", "component", "model"],
+  initialHidden = ["machine", "unit", "component", "model"], // ya en formato seguro
   pageSizeOptions = [10, 25, 50, 100],
 }: DataTableProps) {
-  /* -------------------------------------------------------------------- */
-  /*  1. COLUMNAS DINÁMICAS                                               */
-  /* -------------------------------------------------------------------- */
+  /* 1️⃣  Generamos un mapa “nombre original → idSeguro” */
+  const elementIdMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    data.elements.forEach((el) => {
+      map[el.name] = makeId(el.name) // ej. “Penetración_trabajada_100_000x_0_1_mm”
+    })
+    return map
+  }, [data.elements])
+
+  /* 2️⃣  Definición de columnas (con el ID seguro) */
   const columns = useMemo<ColumnDef<any>[]>(() => {
     const cols: ColumnDef<any>[] = [
-      { accessorKey: "date", header: "Fecha" },
-      { accessorKey: "machine", header: "Máquina" },
-      { accessorKey: "unit", header: "Unidad" },
+      { accessorKey: "date",      header: "Fecha"      },
+      { accessorKey: "machine",   header: "Máquina"    },
+      { accessorKey: "unit",      header: "Unidad"     },
       { accessorKey: "component", header: "Componente" },
-      { accessorKey: "model", header: "Modelo" },
+      { accessorKey: "model",     header: "Modelo"     },
     ]
 
-    // Elementos químicos (valor + nº atómico)
     data.elements.forEach((el) => {
+      const id  = elementIdMap[el.name]
+      const aid = `${id}__atomic`
+
       cols.push({
-        accessorKey: `${el.name}_atomic`,
-        header: `Nº Atómico (${el.name})`,
-        cell: ({ row }) => row.getValue(`${el.name}_atomic`),
+        accessorKey: aid,
+        header:      `Nº Atómico (${el.name})`,
       })
       cols.push({
-        accessorKey: el.name,
-        header: el.name,
-        cell: ({ row }) =>
-          typeof row.getValue(el.name) === "number"
-            ? (row.getValue(el.name) as number).toFixed(2)
-            : row.getValue(el.name),
+        accessorKey: id,
+        header:      el.name,
+        cell: ({ row }) => {
+          const v = row.getValue<number>(id)
+          return typeof v === "number" ? v.toFixed(2) : v
+        },
       })
     })
 
     if (diagnostics) {
-      cols.push({
-        accessorKey: "diagnostic",
-        header: "Diagnóstico",
-        cell: ({ row }) => row.getValue("diagnostic"),
-      })
-      cols.push({
-        accessorKey: "recommendation",
-        header: "Recomendación",
-        cell: ({ row }) => row.getValue("recommendation"),
-      })
+      cols.push({ accessorKey: "diagnostic",     header: "Diagnóstico"   })
+      cols.push({ accessorKey: "recommendation", header: "Recomendación" })
     }
-
     return cols
-  }, [data.elements, diagnostics])
+  }, [data.elements, diagnostics, elementIdMap])
 
-  /* -------------------------------------------------------------------- */
-  /*  2. DATOS FILA                                                       */
-  /* -------------------------------------------------------------------- */
-  const rowsData = useMemo(() => {
+  /* 3️⃣  Filas con las mismas claves seguras */
+  const rows = useMemo(() => {
     return data.samples.map((s) => {
-      const row: Record<string, any> = {
+      const r: Record<string, any> = {
         date: s.date,
         machine: s.machine,
         unit: s.unit,
@@ -114,196 +100,146 @@ export function DataTable({
         model: s.model,
       }
 
-      s.values.forEach((v, i) => {
-        const elName = data.elements[i].name
-        row[elName] = v
-        row[`${elName}_atomic`] =
-          getAtomicNumber(elName) ?? "-"
+      data.elements.forEach((el, idx) => {
+        const id  = elementIdMap[el.name]
+        const aid = `${id}__atomic`
+        r[id]  = s.values[idx] ?? 0
+        r[aid] = getAtomicNumber(el.name) ?? "-"
       })
 
       if (diagnostics) {
-        const elemWithIssue = data.elements.find(
+        const prob = data.elements.find(
           (e) =>
             diagnostics[e.name]?.diagnostic !== "Normal" &&
-            typeof row[e.name] !== "undefined",
+            typeof r[elementIdMap[e.name]] !== "undefined",
         )
-        if (elemWithIssue) {
-          row.diagnostic = diagnostics[elemWithIssue.name].diagnostic
-          row.recommendation =
-            diagnostics[elemWithIssue.name].recommendation
-        } else {
-          row.diagnostic = "Normal"
-          row.recommendation = "Sin acciones"
-        }
+        r.diagnostic     = prob ? diagnostics[prob.name].diagnostic     : "Normal"
+        r.recommendation = prob ? diagnostics[prob.name].recommendation : "Sin acciones"
       }
 
-      return row
+      return r
     })
-  }, [data, diagnostics])
+  }, [data, diagnostics, elementIdMap])
 
-  /* -------------------------------------------------------------------- */
-  /*  3. REACT-TABLE                                                      */
-  /* -------------------------------------------------------------------- */
-  const [pageSize, setPageSize] = useState(pageSizeOptions[0])
+  /* 4️⃣  Estados de tabla */
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize : pageSizeOptions[0],
+  })
   const [columnVisibility, setColumnVisibility] =
     useState<VisibilityState>(
-      Object.fromEntries(initialHidden.map((id) => [id, false])),
+      Object.fromEntries(initialHidden.map((k) => [k, false])),
     )
 
   const table = useReactTable({
-    data: rowsData,
+    data: rows,
     columns,
-    state: { columnVisibility, pagination: {
-      pageSize,
-      pageIndex: 0
-    } },
+    state: { pagination, columnVisibility },
+    onPaginationChange:       setPagination,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: (updater) =>
-      table.setPagination(updater as any),
-    getCoreRowModel: getCoreRowModel(),
+    getCoreRowModel:      getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  /* -------------------------------------------------------------------- */
-  /*  4. UI                                                               */
-  /* -------------------------------------------------------------------- */
+  /* 5️⃣  INTERFAZ */
   return (
-    <div className="space-y-4" id="data-table">
-      {/* ---------- Tabla ------------------------------------------------ */}
-      <div className="rounded-md border overflow-x-auto">
+    <div className="space-y-4">
+      {/* Table */}
+      <div className="border rounded-md overflow-x-auto">
         <Table>
-          {/* HEADERS */}
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
                 {hg.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                    {header.isPlaceholder ? null : flexRender(
+                      header.column.columnDef.header, header.getContext(),
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-
-          {/* FILAS */}
           <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="whitespace-nowrap">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Sin resultados
-                </TableCell>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="whitespace-nowrap">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* ---------- Controles ------------------------------------------- */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Visibilidad de columnas */}
+      {/* Controles */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        {/* Column visibility */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="flex gap-1">
-              <Columns className="h-4 w-4" />
-              Columnas
+              <Columns className="h-4 w-4" /> Columnas
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56">
-            <p className="text-xs mb-2 font-medium text-muted-foreground">
-              Mostrar / ocultar
-            </p>
-            <div className="max-h-64 overflow-y-auto pr-2 space-y-1">
-              {table
-                .getAllLeafColumns()
-                .map((col) => (
-                  <label
-                    key={col.id}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={col.getIsVisible()}
-                      onCheckedChange={() => col.toggleVisibility()}
-                    />
-                    {col.columnDef.header as string}
-                  </label>
-                ))}
+          <PopoverContent className="w-60">
+            <p className="text-xs mb-2 text-muted-foreground">Mostrar / ocultar</p>
+            <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+              {table.getAllLeafColumns().map((col) => (
+                <label key={col.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={col.getIsVisible()}
+                    onCheckedChange={() => col.toggleVisibility()}
+                  />
+                  {col.columnDef.header as string}
+                </label>
+              ))}
             </div>
           </PopoverContent>
         </Popover>
 
-        {/* Selector de pageSize */}
+        {/* Page-size */}
         <div className="flex items-center gap-2 text-sm">
-          <span>Filas:</span>
+          Filas:
           <select
             className="border rounded px-2 py-1"
-            value={pageSize}
-            onChange={(e) => {
-              table.setPageSize(Number(e.target.value))
-              setPageSize(Number(e.target.value))
-            }}
+            value={pagination.pageSize}
+            onChange={(e) =>
+              setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })
+            }
           >
-            {pageSizeOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
+            {pageSizeOptions.map((n) => (
+              <option key={n} value={n}>{n}</option>
             ))}
           </select>
         </div>
 
-        {/* Paginación */}
+        {/* Pagination */}
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
+          <Button variant="outline" size="icon"
             disabled={!table.getCanPreviousPage()}
-            onClick={() => table.setPageIndex(0)}
-          >
+            onClick={() => table.setPageIndex(0)}>
             <ChevronsLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
+          <Button variant="outline" size="icon"
             disabled={!table.getCanPreviousPage()}
-            onClick={() => table.previousPage()}
-          >
+            onClick={() => table.previousPage()}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
+
           <span className="px-2 text-sm">
-            Página {table.getState().pagination.pageIndex + 1} de{" "}
-            {table.getPageCount()}
+            Página {pagination.pageIndex + 1} de {table.getPageCount()}
           </span>
-          <Button
-            variant="outline"
-            size="icon"
+
+          <Button variant="outline" size="icon"
             disabled={!table.getCanNextPage()}
-            onClick={() => table.nextPage()}
-          >
+            onClick={() => table.nextPage()}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
+          <Button variant="outline" size="icon"
             disabled={!table.getCanNextPage()}
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-          >
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}>
             <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>

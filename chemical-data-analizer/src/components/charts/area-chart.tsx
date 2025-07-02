@@ -1,8 +1,4 @@
-/* -----------------------------------------------------------
-   AreaChart.tsx  —  con selector interno + botón “Exportar PNG”
-   ----------------------------------------------------------- */
-
-   import { useState, useMemo, useRef } from "react"
+ import { useState, useMemo, useRef } from "react"
    import {
      AreaChart as ReAreaChart,
      Area,

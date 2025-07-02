@@ -16,11 +16,8 @@ export interface ProcessOptions {
   dateFormat?: string
 }
 
-/* -------------------------------------------------------------------------- */
-/*  1. HEADERS & PREVIEW                                                      */
-/* -------------------------------------------------------------------------- */
+
 export async function getFileHeaders(file: File) {
-  console.log("[DBG-01] → getFileHeaders -", file.name)
 
   const ext = file.name.split(".").pop()?.toLowerCase()
   if (ext === "csv") return parseCSVHeaders(file)
@@ -39,7 +36,6 @@ function parseCSVHeaders(file: File) {
           .map((l) => l.split(",").map((v) => v.trim()))
         if (!rows.length) throw new Error("CSV vacío")
 
-        console.log("[DBG-02] CSV rows:", rows.length)
         resolve({ headers: rows[0], preview: rows.slice(1, 6) })
       } catch (err) {
         reject(err)
@@ -59,7 +55,6 @@ function parseExcelHeaders(file: File) {
         const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }) as any[][]
         if (!data.length) throw new Error("Excel vacío")
 
-        console.log("[DBG-03] XLSX rows:", data.length)
         resolve({ headers: data[0].map(String), preview: data.slice(1, 6).map((r) => r.map(String)) })
       } catch (err) {
         reject(err)
@@ -70,11 +65,7 @@ function parseExcelHeaders(file: File) {
   })
 }
 
-/* -------------------------------------------------------------------------- */
-/*  2. PUBLIC ENTRY – processFile                                             */
-/* -------------------------------------------------------------------------- */
 export async function processFile(file: File, opts: ProcessOptions = {}): Promise<ChemicalData> {
-  console.log("[DBG-04] → processFile -", file.name, opts)
 
   const ext = file.name.split(".").pop()?.toLowerCase()
   if (ext === "csv")  return parseCSV(file, opts)
@@ -92,7 +83,6 @@ function parseCSV(file: File, opts: ProcessOptions) {
           .filter(Boolean)
           .map((l) => l.split(",").map((v) => v.trim()))
 
-        console.log("[DBG-05] Filas CSV leídas:", rows.length)
         resolve(parseDataFromArray(rows, opts))
       } catch (err) { reject(err) }
     }
@@ -108,7 +98,6 @@ function parseXLSX(file: File, opts: ProcessOptions) {
       try {
         const wb   = XLSX.read(new Uint8Array(e.target?.result as ArrayBuffer), { type: "array" })
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }) as any[][]
-        console.log("[DBG-06] Filas XLSX leídas:", rows.length)
         resolve(parseDataFromArray(rows, opts))
       } catch (err) { reject(err) }
     }
@@ -121,12 +110,10 @@ function parseXLSX(file: File, opts: ProcessOptions) {
 /*  3. PARSER CORE                                                            */
 /* -------------------------------------------------------------------------- */
 function parseDataFromArray(raw: any[][], opts: ProcessOptions): ChemicalData {
-  console.log("[DBG-07] → parseDataFromArray. Total filas:", raw.length)
   if (!raw.length) throw new Error("Archivo sin datos")
 
   /* 3.1 Headers --------------------------------------------------------- */
   const headers = raw[0].map(String)
-  console.log("[DBG-08] Cabeceras:", headers)
 
   /* 3.2 Forzar que existan todas las columnas previstas ----------------- */
   const expected = Object.keys(OIL_ANALYSIS_RANGES)
@@ -134,7 +121,6 @@ function parseDataFromArray(raw: any[][], opts: ProcessOptions): ChemicalData {
     (el) => !headers.some((h) => h.toLowerCase() === el.toLowerCase()),
   )
   if (missing.length) {
-    console.log("[DBG-08b] Añadiendo columnas faltantes:", missing.length)
     headers.push(...missing)
     raw[0] = headers
     raw.slice(1).forEach((r) => { while (r.length < headers.length) r.push("") })
@@ -145,7 +131,6 @@ function parseDataFromArray(raw: any[][], opts: ProcessOptions): ChemicalData {
     ? opts.dateColumnIndices
     : [findDateColumn(headers, raw[1])]
 
-  console.log("[DBG-09] Índice columna fecha:", dateIdxs[0])
 
   const adminCols = {
     machine:   findColumn(headers, ["máquina", "maquina", "machine"]),
@@ -159,7 +144,6 @@ function parseDataFromArray(raw: any[][], opts: ProcessOptions): ChemicalData {
   const administrative = [...dateIdxs, ...Object.values(adminCols)].filter((i) => i !== -1)
   const elementIdxs = headers.map((_, i) => i).filter((i) => !administrative.includes(i))
 
-  console.log("[DBG-10] Nº elementos detectados:", elementIdxs.length)
 
   /* 3.4 Map elements ----------------------------------------------------- */
   const elements = elementIdxs.map((i) => ({ name: headers[i], unit: "" }))
@@ -192,7 +176,6 @@ function parseDataFromArray(raw: any[][], opts: ProcessOptions): ChemicalData {
     }
   })
 
-  console.log("[DBG-12] Muestras válidas:", samples.length)
   if (!samples.length) throw new Error("No se generaron muestras válidas")
 
   return { elements, samples }

@@ -1,7 +1,4 @@
-/* -----------------------------------------------------------
-   ComposedChart.tsx — selector múltiple + export PNG
-   ----------------------------------------------------------- */
-   import { useMemo, useRef, useState } from "react"
+  import { useMemo, useRef, useState } from "react"
    import {
      ComposedChart as ReComposedChart,
      Line,
