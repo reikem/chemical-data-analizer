@@ -64,8 +64,9 @@ pnpm dev                  # http://localhost:5173
 
 # 4. build producción
 pnpm build && pnpm preview
---
+---
 ## 🖱️ Flujo de uso
+
 Cargar archivo en la tarjeta de inicio.
 
 Elegir columna(s) de fecha + formato → Continuar.
@@ -77,7 +78,7 @@ Filtrar rango de fechas y/o seleccionar elementos químicos (multi-selector).
 Exportar a PDF / Excel / SQL o imprimir.
 
 Si es tu primera visita, acepta el recorrido guiado para conocer todas las zonas de la UI.
---
+---
 ## 🙌 Contribuir
 Haz fork y crea una rama feat/mi-feature.
 
@@ -86,7 +87,7 @@ pnpm lint && pnpm test antes del commit.
 Envía un Pull Request descriptivo.
 
 Los issues con capturas y pasos para reproducir son bienvenidos.
---
+---
 ## 📄 Licencia
 Distribuido bajo Apache-2.0.
 Úsalo libremente citando el proyecto original.
