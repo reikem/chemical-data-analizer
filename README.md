@@ -54,7 +54,6 @@ src/
 ```bash
 # 1. clona el repo
 git clone https://github.com/reikem/chemical-data-analizer.git
-cd chemical-data-analizer
 
 # 2. instala dependencias
 pnpm install              # o npm install / yarn
@@ -64,6 +63,7 @@ pnpm dev                  # http://localhost:5173
 
 # 4. build producción
 pnpm build && pnpm preview
+```
 ---
 ## 🖱️ Flujo de uso
 
