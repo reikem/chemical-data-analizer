@@ -36,16 +36,6 @@ Incluye exportaciones (PDF, Excel, SQL), estadísticas automáticas y un recorri
 
 ---
 
-## 📁 Estructura de carpetas (resumen)
-
-src/
-├─ components/ ← UI re-usable (charts/, ui/, FileUploader, DataDisplay…)
-├─ hook/ ← hooks TanStack (useChemicalData, …)
-├─ lib/ ← helpers (file-processor, pdf-generator, date-utils)
-├─ pages/ ← Home.tsx
-├─ providers/ ← TanStack provider, tipos, rangos de análisis
-├─ assets/ ← iconos/imágenes
-└─ main.tsx ← punto de entrada Vite
 
 ## 🚀 Puesta en marcha
 
@@ -89,5 +79,6 @@ Envía un Pull Request descriptivo.
 Los issues con capturas y pasos para reproducir son bienvenidos.
 ---
 ## 📄 Licencia
-Distribuido bajo Apache-2.0.
+
+**MIT — Usa este código como quieras, **respetando el aviso de NO OFICIALIDAD**.
 Úsalo libremente citando el proyecto original.
