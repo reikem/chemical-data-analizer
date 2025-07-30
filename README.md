@@ -82,3 +82,4 @@ Los issues con capturas y pasos para reproducir son bienvenidos.
 
 **MIT — Usa este código como quieras, **respetando el aviso de NO OFICIALIDAD**.
 Úsalo libremente citando el proyecto original.
+**Link - https://reikem.github.io/chemical-data-analizer/**.
